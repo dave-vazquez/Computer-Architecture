@@ -10,6 +10,5 @@ from cpu import *
 os.system("clear")
 
 cpu = CPU()
-cpu.trace()
-# cpu.load()
-# cpu.run()
+cpu.load()
+cpu.run()

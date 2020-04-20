@@ -66,7 +66,7 @@ class CPU:
 
     def ram_read(self, mar):
         if mar < len(self.ram):
-            print(self.ram[mar])
+            return self.ram[mar]
         else:
             print(f"Memory Address Register (MAR): {mar} not found.")
 
@@ -78,21 +78,23 @@ class CPU:
         running = True
 
         while running:
+            self.trace()
             inst = self.ram_read(self.pc)
 
             if inst == self.LDI:
                 address = self.ram_read(self.pc + 1)
                 value = self.ram_read(self.pc + 2)
-                self.register[address] = value
+                self.reg[address] = value
                 self.pc += 3
 
             elif inst == self.PRN:
                 address = self.ram_read(self.pc + 1)
-                value = self.register[address]
+                value = self.reg[address]
                 print(value)
                 self.pc += 2
 
             elif inst == self.HLT:
                 running = False
 
-            self.pc += 1
+            else:
+                self.pc += 1
