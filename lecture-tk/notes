@@ -1,0 +1,17 @@
+CPU & Components
+
+  Transistors - most basic
+  Logic Gates - made up of TransistorsDigital Logic common operations are performed by Gates
+    ex. AND OR, NOT
+    ex. XOR, NOR, NAND
+  Logic Gates can be put together into far more complex structures:
+    ex. ALU - Arithmetic Logic Unit
+    ex. CPUs - Central Proccessing Unit
+
+RAM - Random Access memory
+
+  Fast compared to hard-drives, even SSDs
+  Like a big array of bytes that you can access by index (or address)
+  Each element in Ram can store oen byte, an 8-bit number
+  Larger, multi-byte values are stored in sequential addresses in RAM
+  CPU communicates with RAM via the memory bus
