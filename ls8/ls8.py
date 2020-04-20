@@ -2,10 +2,14 @@
 
 """Main."""
 
+import os
 import sys
+
 from cpu import *
 
-cpu = CPU()
+os.system("clear")
 
-cpu.load()
-cpu.run()
+cpu = CPU()
+cpu.trace()
+# cpu.load()
+# cpu.run()
