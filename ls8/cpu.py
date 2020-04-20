@@ -103,7 +103,7 @@ class CPU:
                 # increment the program counter by 3 to get to the next instruction
                 self.pc += 3
 
-            # PRN - register, print to the console the value stored in the given register
+            # PRN - print register, print to the console the value stored in the given register
             elif inst == self.PRN:
                 # read the register number from RAM at address: pc + 1
                 reg_num = self.ram_read(self.pc + 1)
@@ -113,7 +113,7 @@ class CPU:
                 print(value)
                 # increment the program counter by 2 to get to the next instruction
                 self.pc += 2
-            # HLT - half the CPU (and exit the emulator)
+            # HLT - halt the CPU (and exit the emulator)
             elif inst == self.HLT:
                 # flag running to False, and let the program exit
                 running = False
