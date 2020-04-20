@@ -7,9 +7,15 @@ class CPU:
     """Main CPU class."""
 
     def __init__(self):
+        # ram initialized to 256 bytes
+        # (each decimal number is an 8-bit binary number)
         self.ram = [0] * 256
+        # register initalized to 8-bytes
         self.reg = [0] * 8
+        # program counter
         self.pc = 0
+        # some stored instructions
+        # definitions in the run() method
         self.LDI = 0b10000010
         self.PRN = 0b01000111
         self.HLT = 0b00000001
@@ -65,12 +71,16 @@ class CPU:
         print()
 
     def ram_read(self, mar):
+        # if MAR (Memory Address Register) exists in ram
         if mar < len(self.ram):
+            # return the MDR (Memory Data Register)
             return self.ram[mar]
         else:
             print(f"Memory Address Register (MAR): {mar} not found.")
 
     def ram_write(self, mar, mdr):
+        # writes the MDR (Memory Data Register)
+        # to the MAR (Memory Address Register)
         self.ram[mar] = mdr
 
     def run(self):
@@ -79,22 +89,31 @@ class CPU:
 
         while running:
             self.trace()
+            # reads the instruction from RAM at address: PC (program counter)
             inst = self.ram_read(self.pc)
 
+            # LDI - register immediate, sets the value of a register to an integer
             if inst == self.LDI:
-                address = self.ram_read(self.pc + 1)
+                # read the register number from RAM at address: pc + 1
+                reg_num = self.ram_read(self.pc + 1)
+                # read the value from RAM at address: pc + 2
                 value = self.ram_read(self.pc + 2)
-                self.reg[address] = value
+                # set the value to the register
+                self.reg[reg_num] = value
+                # increment the program counter by 3 to get to the next instruction
                 self.pc += 3
 
+            # PRN - register, print to the console the value stored in the given register
             elif inst == self.PRN:
-                address = self.ram_read(self.pc + 1)
-                value = self.reg[address]
+                # read the register number from RAM at address: pc + 1
+                reg_num = self.ram_read(self.pc + 1)
+                # get the value stored in the register
+                value = self.reg[reg_num]
+                # print it
                 print(value)
+                # increment the program counter by 2 to get to the next instruction
                 self.pc += 2
-
+            # HLT - half the CPU (and exit the emulator)
             elif inst == self.HLT:
+                # flag running to False, and let the program exit
                 running = False
-
-            else:
-                self.pc += 1
