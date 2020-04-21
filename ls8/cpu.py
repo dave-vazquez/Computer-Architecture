@@ -95,7 +95,6 @@ class CPU:
             # reads the instruction from RAM at address: PC (program counter)
             next_inst = self.ram_read(self.pc)
             inst = self.parse_instruction(next_inst)
-            p_print(inst)
             # LDI - register immediate, sets the value of a register to an integer
             if inst["op_code"] == self.op_codes["LDI"]:
                 # read the register number from RAM at address: pc + 1
