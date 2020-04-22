@@ -2,29 +2,44 @@
 import pprint
 import sys
 
-from branch_table import BranchTable
-
 p_print = pprint.PrettyPrinter(width=30).pprint
+
+# RESERVED REGISTERS
+IM = 5
+IS = 6
+SP = 7
+# RESERVED ADDRESSES
+STACK_START_ADDRESS = 0b11110011
+# OPERATION CODES
+LDI = 0b10000010
+PRN = 0b01000111
+HLT = 0b00000001
+MUL = 0b10100010
+PUSH = 0b01000101
+POP = 0b01000110
 
 
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
-        # ram initialized to 256 bytes
-        # (each decimal number is an 8-bit binary number)
+        # initialize 256-byte RAM
         self.ram = [0] * 256
-        # register initalized to 8-bytes
+        # initialize registers R0 - R7
         self.reg = [0] * 8
-
-        # stores address for start of stack in reserved
-        # register number 7
-        self.reg[7] = 0b11110011
-        # program counter
+        # initialize program counter
         self.pc = 0
-        # stores operation executables in BranchTable
-        # operations are referenced by op_code
-        self.operations = BranchTable()
+        # set R7, SP (Stack Pointer), to the address of the start of stack
+        self.reg[SP] = STACK_START_ADDRESS
+
+        # initializes operation branch table
+        self.operations = {
+            PRN: self.handle_PRN,
+            LDI: self.handle_LDI,
+            MUL: self.handle_MUL,
+            PUSH: self.handle_PUSH,
+            POP: self.handle_POP
+        }
 
     def load(self, program_file_name):
         address = 0
@@ -35,13 +50,12 @@ class CPU:
                 line = line.split('#')
                 line = line[0].strip()
 
-                # skips lines that do not contain
-                # binary instruction
+                # skips lines that do not contain a binary instruction
                 if line == '':
                     continue
                 # adds the instruction to RAM at the address value
+                # and increments the address
                 self.ram[address] = int(line, 2)
-
                 address += 1
 
     def alu(self, op, reg_a, reg_b):
@@ -49,16 +63,12 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        # elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
     def trace(self):
-        """
-        Handy function to print out the CPU state. You might want to call this
-        from run() if you need help debugging.
-        """
-
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
             # self.fl,
@@ -74,12 +84,8 @@ class CPU:
         print()
 
     def ram_read(self, mar):
-        # if MAR (Memory Address Register) exists in ram
-        if mar < len(self.ram):
-            # return the MDR (Memory Data Register)
-            return self.ram[mar]
-        else:
-            print(f"Memory Address Register (MAR): {mar} not found.")
+        # returns the MDR (Memory Data Register)
+        return self.ram[mar]
 
     def ram_write(self, mar, mdr):
         # writes the MDR (Memory Data Register)
@@ -95,11 +101,57 @@ class CPU:
             # parse the instruction
             inst = self.parse_instruction(next_inst)
             # if HLT, terminate the loop
-            if inst["op_code"] is 0b00000001:
+            if next_inst is HLT:
                 running = False
             else:
-                # else execute the command
-                self = self.operations.run(inst, self)
+                self.operations[next_inst](inst["num_ops"])
+
+    def handle_PRN(self, num_ops):
+        # read the register number from RAM at address: pc + 1
+        reg_num = self.ram_read(self.pc + 1)
+
+        # get the value stored in the register
+        value = self.reg[reg_num]
+        # print it
+        print(value)
+        # increment the program counter by 2 to get to the next instruction
+        self.pc += num_ops + 1
+
+    def handle_LDI(self, num_ops):
+        # read the register number from RAM at address: pc + 1
+        reg_num = self.ram_read(self.pc + 1)
+        # read the value from RAM at address: pc + 2
+        value = self.ram_read(self.pc + 2)
+        # set the value to the register
+        self.reg[reg_num] = value
+        # increment the program counter by 3 to get to the next instruction
+        self.pc += num_ops + 1
+
+    def handle_MUL(self, num_ops):
+        reg_a = self.ram_read(self.pc + 1)
+        reg_b = self.ram_read(self.pc + 2)
+        self.alu("MUL", reg_a, reg_b)
+
+        self.pc += num_ops + 1
+
+    def handle_PUSH(self, num_ops):
+        self.reg[7] -= 1
+        reg_num = self.ram_read(self.pc + 1)
+        value = self.reg[reg_num]
+        stack_address = self.reg[7]
+
+        self.ram_write(stack_address, value)
+
+        self.pc += num_ops + 1
+
+    def handle_POP(self, num_ops):
+        reg_num = self.ram_read(self.pc + 1)
+        stack_address = self.reg[7]
+        value = self.ram_read(stack_address)
+        self.reg[reg_num] = value
+        self.reg[7] += 1
+
+        self.pc += num_ops + 1
 
     def parse_instruction(self, inst):
         # masks all but first 2 bits, bit-wise shifts 6 to right, castes to int
@@ -111,18 +163,10 @@ class CPU:
         # masks all but last four bits
         inst_id = 0b00001111 & inst
 
-        op_code = ""
-        # iterates through the dictionary of existing op_codes
-        for code in self.operations.get_op_codes():
-            # matches/stores the instruction to the op_code
-            if inst == code:
-                op_code = code
-
         # returns vals as a dictionary
         return {
             "num_ops": num_ops,
             "is_alu": is_alu,
             "sets_pc": sets_pc,
             "inst_id": inst_id,
-            "op_code": op_code
         }
