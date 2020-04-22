@@ -3,6 +3,8 @@
 import pprint
 import sys
 
+from branch_table import BranchTable
+
 p_print = pprint.PrettyPrinter(width=30).pprint
 
 
@@ -19,12 +21,7 @@ class CPU:
         self.pc = 0
         # some stored instructions
         # definitions in the run() method
-        self.op_codes = {
-            "LDI": 0b10000010,
-            "PRN": 0b01000111,
-            "HLT": 0b00000001,
-            "MUL": 0b10100010
-        }
+        self.operations = BranchTable()
 
     def load(self, program_file_name):
         address = 0
@@ -87,58 +84,18 @@ class CPU:
         self.ram[mar] = mdr
 
     def run(self):
-
         running = True
 
         while running:
-            # self.trace()
-            # reads the instruction from RAM at address: PC (program counter)
+            # read th
             next_inst = self.ram_read(self.pc)
+
             inst = self.parse_instruction(next_inst)
-            # LDI - register immediate, sets the value of a register to an integer
-            if inst["op_code"] == self.op_codes["LDI"]:
-                # read the register number from RAM at address: pc + 1
-                reg_num = self.ram_read(self.pc + 1)
-                # read the value from RAM at address: pc + 2
-                value = self.ram_read(self.pc + 2)
-                # set the value to the register
-                self.reg[reg_num] = value
-                # increment the program counter by 3 to get to the next instruction
-                self.pc += inst["num_ops"] + 1
 
-            # PRN - print register, print to the console the value stored in the given register
-            elif inst["op_code"] == self.op_codes["PRN"]:
-                # read the register number from RAM at address: pc + 1
-                reg_num = self.ram_read(self.pc + 1)
-                # get the value stored in the register
-                value = self.reg[reg_num]
-                # print it
-                print(value)
-                # increment the program counter by 2 to get to the next instruction
-                self.pc += inst["num_ops"] + 1
-
-            # MUL - registerA registerB - mutiplies values stored in each register
-            #   and stores back in registerA
-            elif inst["op_code"] == self.op_codes["MUL"]:
-                # reads/stores the register numbers from the next two instructions
-                reg_num_a = self.ram_read(self.pc + 1)
-                reg_num_b = self.ram_read(self.pc + 2)
-
-                # reads/stores the values from each of the registers
-                operand_1 = self.reg[reg_num_a]
-                operand_2 = self.reg[reg_num_b]
-                # multiplies the values together
-                result = operand_1 * operand_2
-                # stores the value back in the register
-                self.reg[reg_num_a] = result
-
-                # increments the counter
-                self.pc += inst["num_ops"] + 1
-
-            # HLT - halt the CPU (and exit the emulator)
-            elif inst["op_code"] == self.op_codes["HLT"]:
-                # flag running to False, and let the program exit
+            if inst["op_code"] is 0b00000001:
                 running = False
+            else:
+                self = self.operations.run(inst, self)
 
     def parse_instruction(self, inst):
         # masks all but first 2 bits, bit-wise shifts 6 to right, castes to int
@@ -152,7 +109,7 @@ class CPU:
 
         op_code = ""
         # iterates through the dictionary of existing op_codes
-        for code in self.op_codes.values():
+        for code in self.operations.get_op_codes():
             # matches/stores the instruction to the op_code
             if inst == code:
                 op_code = code
