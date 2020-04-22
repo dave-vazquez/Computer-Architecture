@@ -1,5 +1,4 @@
 """CPU functionality."""
-
 import pprint
 import sys
 
@@ -17,10 +16,14 @@ class CPU:
         self.ram = [0] * 256
         # register initalized to 8-bytes
         self.reg = [0] * 8
+
+        # stores address for start of stack in reserved
+        # register number 7
+        self.reg[7] = 0b11110011
         # program counter
         self.pc = 0
-        # some stored instructions
-        # definitions in the run() method
+        # stores operation executables in BranchTable
+        # operations are referenced by op_code
         self.operations = BranchTable()
 
     def load(self, program_file_name):

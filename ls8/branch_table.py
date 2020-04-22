@@ -2,6 +2,8 @@ LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
 MUL = 0b10100010
+PUSH = 0b01000101
+POP = 0b01000110
 
 
 class BranchTable:
@@ -11,6 +13,8 @@ class BranchTable:
         self.branchtable[PRN] = self._handle_PRN
         self.branchtable[HLT] = self._handle_HLT
         self.branchtable[MUL] = self._handle_MUL
+        self.branchtable[PUSH] = self._handle_PUSH
+        self.branchtable[POP] = self._handle_POP
 
     def _handle_LDI(self, cpu, inst):
         # read the register number from RAM at address: pc + 1
@@ -27,6 +31,7 @@ class BranchTable:
     def _handle_PRN(self, cpu, inst):
         # read the register number from RAM at address: pc + 1
         reg_num = cpu.ram_read(cpu.pc + 1)
+
         # get the value stored in the register
         value = cpu.reg[reg_num]
         # print it
@@ -36,6 +41,7 @@ class BranchTable:
 
         return cpu
 
+    # ALU
     def _handle_MUL(self, cpu, inst):
         # reads/stores the register numbers from the next two instructions
         reg_num_a = cpu.ram_read(cpu.pc + 1)
@@ -54,11 +60,35 @@ class BranchTable:
 
         return cpu
 
+    def _handle_PUSH(self, cpu, inst):
+        cpu.reg[7] = cpu.reg[7] - 1
+        reg_num = cpu.ram_read(cpu.pc + 1)
+        value = cpu.reg[reg_num]
+        stack_address = cpu.reg[7]
+
+        cpu.ram_write(stack_address, value)
+
+        cpu.pc += inst["num_ops"] + 1
+
+        return cpu
+
+    def _handle_POP(self, cpu, inst):
+        reg_num = cpu.ram_read(cpu.pc + 1)
+        stack_address = cpu.reg[7]
+        value = cpu.ram_read(stack_address)
+        cpu.reg[reg_num] = value
+        cpu.reg[7] = stack_address + 1
+
+        cpu.pc += inst["num_ops"] + 1
+
+        return cpu
+
     def _handle_HLT(self):
         return false
 
     def run(self, inst, cpu):
-        return self.branchtable[inst["op_code"]](cpu, inst)
+        cpu = self.branchtable[inst["op_code"]](cpu, inst)
+        return cpu
 
     def get_op_codes(self):
         return self.branchtable.keys()
