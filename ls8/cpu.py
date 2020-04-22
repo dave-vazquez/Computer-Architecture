@@ -84,17 +84,18 @@ class CPU:
         self.ram[mar] = mdr
 
     def run(self):
+
         running = True
-
         while running:
-            # read th
+            # read the next instruction from RAM
             next_inst = self.ram_read(self.pc)
-
+            # parse the instruction
             inst = self.parse_instruction(next_inst)
-
+            # if HLT, terminate the loop
             if inst["op_code"] is 0b00000001:
                 running = False
             else:
+                # else execute the command
                 self = self.operations.run(inst, self)
 
     def parse_instruction(self, inst):
