@@ -73,11 +73,12 @@ class CPU:
 
     def alu(self, op, operands):
         """ALU operations."""
+        # extracts the registers from the operands
         reg_a, reg_b = operands
 
         if op is ADD:
             self.reg[reg_a] += self.reg[reg_b]
-        elif op == MUL:
+        elif op is MUL:
             self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
@@ -113,34 +114,39 @@ class CPU:
             running = self.execute(next_instruction)
 
     def execute(self, instruction):
-        # parses instruction, stores parsed instruction as dict in 'inst'
+        # parses instruction and stores in 'inst' as dict
         inst = self.parse_instruction(instruction)
 
-        if inst["inst_id"] is not HLT:
-            # destructures parsed 'inst' dict
-            num_ops, is_alu, sets_pc, inst_id = inst.values()
-            # initializes operand list of length 'num_ops'
-            operands = [None] * num_ops
+        # returns false to execute run-loop
+        if inst["inst_id"] is HLT:
+            return False
 
-            # reads operands from memory and stores in 'operands' list
-            for i in range(len(operands)):
-                operand = self.ram_read(self.pc + i + 1)
-                operands[i] = operand
+        # destructures parsed 'inst' dict
+        num_ops, is_alu, sets_pc, inst_id = inst.values()
+        # initializes operand list of length 'num_ops'
+        operands = [None] * num_ops
 
-            # redirects to ALU if instruction is an ALU instruction
-            if is_alu:
-                self.alu(inst_id, operands)
-            # otherwise executes directly from `operations` branch-table
-            else:
-                self.operations[inst_id](operands)
+        # reads operands from memory and stores in 'operands' list
+        for i in range(len(operands)):
+            operand = self.ram_read(self.pc + i + 1)
+            operands[i] = operand
 
-            # increments pc if the instruction requires it
-            self.pc += num_ops + 1
+        # redirects to ALU if instruction is an ALU instruction
+        if is_alu:
+            self.alu(inst_id, operands)
+        # otherwise executes directly from the `operations` branch-table
+        else:
+            self.operations[inst_id](operands)
 
-            # continues run-loop if 'inst_id' is not HLT
-            return True
+        # increments pc
+        # NOTE: there's a bit in the instruction the denotes whether
+        # the instruction sets the pc, not all instructions that
+        # require setting the pc have it, not sure what that bit is
+        # used for just yet... so setting the pc manually for now
+        self.pc += num_ops + 1
 
-        return False
+        # returns true to continue run-loop
+        return True
 
     def parse_instruction(self, inst):
         # masks all but first 2 bits, bit-wise shifts 6 to right, castes to int
@@ -161,37 +167,39 @@ class CPU:
         }
 
     def PRN(self, operand):
-        reg_num = operand[0]
-        value = self.reg[reg_num]
+        # extracts the target register from the operand
+        target_reg = operand[0]
+        # extracts the value stored in the target register
+        value = self.reg[target_reg]
+        # prints the value
         print(value)
 
     def LDI(self, operands):
-        # read the register number from RAM at address: pc + 1
-        reg_num, value = operands
-        # read the value from RAM at address: pc + 2
-        value = operands[1]
-        # set the value to the register
-        self.reg[reg_num] = value
+        # extracts the target register and value from the operands
+        target_reg, value = operands
+        # set the value to the target register
+        self.reg[target_reg] = value
 
     def PSH(self, operand):
-        # extract the operand
-        reg_num = operand[0]
+        # extract the target register from the operand
+        target_reg = operand[0]
         # decrements the SP
         self.reg[SP] -= 1
-        # extract the value stored in the target register
-        value = self.reg[reg_num]
-        # extract the stack address stored in the SP register
+        # extracts the value stored in the target register
+        value = self.reg[target_reg]
+        # extracts the stack address stored in the SP register
         stack_address = self.reg[SP]
-        # write the value to the stack address
+        # writes the value to the stack address in RAM
         self.ram_write(stack_address, value)
 
     def POP(self, operand):
-        reg_num = operand[0]
+        # extracts the target register from the operand
+        target_reg = operand[0]
         # extracts the stack address stored in the SP register
         stack_address = self.reg[SP]
         # extracts the value read from RAM at the stack address
         value = self.ram_read(stack_address)
-        # stores the value in the given register
-        self.reg[reg_num] = value
+        # stores the value in the target register
+        self.reg[target_reg] = value
         # increments the SP
         self.reg[SP] += 1
