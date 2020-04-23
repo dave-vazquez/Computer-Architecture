@@ -5,6 +5,7 @@ import sys
 p_print = pprint.PrettyPrinter(width=30).pprint
 
 # RESERVED REGISTERS
+PC = 4
 IM = 5
 IS = 6
 SP = 7
@@ -12,14 +13,17 @@ SP = 7
 STACK_START_ADDRESS = 0b11110011
 # OPERATION CODES
 HLT = 0b00000001
-LDI = 0b00000010
-PRN = 0b00000111
-PSH = 0b00000101
-POP = 0b00000110
+LDI = 0b10000010
+JMP = 0b01010100
+PRN = 0b01000111
+PUSH = 0b01000101
+POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
 # ALU OPERATION CODES
-ADD = 0b00000000
+ADD = 0b10100000
 SUB = 0b00000001
-MUL = 0b00000010
+MUL = 0b10100010
 DIV = 0b00000011
 MOD = 0b00000100
 INC = 0b00000101
@@ -42,7 +46,7 @@ class CPU:
         # initialize registers R0 - R7
         self.reg = [0] * 8
         # initialize program counter
-        self.pc = 0
+        self.reg[PC] = 0
         # set R7, SP (Stack Pointer), to the address of the start of stack
         self.reg[SP] = STACK_START_ADDRESS
 
@@ -50,8 +54,10 @@ class CPU:
         self.operations = {
             PRN: self.PRN,
             LDI: self.LDI,
-            PSH: self.PSH,
-            POP: self.POP
+            PUSH: self.PUSH,
+            POP: self.POP,
+            CALL: self.CALL,
+            RET: self.RET
         }
 
     def load(self, program_file_name):
@@ -88,12 +94,12 @@ class CPU:
 
     def trace(self):
         print(f"TRACE: %02X | %02X %02X %02X |" % (
-            self.pc,
+            self.reg[PC],
             # self.fl,
             # self.ie,
-            self.ram_read(self.pc),
-            self.ram_read(self.pc + 1),
-            self.ram_read(self.pc + 2)
+            self.ram_read(self.reg[PC]),
+            self.ram_read(self.reg[PC] + 1),
+            self.ram_read(self.reg[PC] + 2)
         ), end='')
 
         for i in range(8):
@@ -113,15 +119,14 @@ class CPU:
     def run(self):
         running = True
         while running:
-            next_instruction = self.ram_read(self.pc)
+            next_instruction = self.ram_read(self.reg[PC])
             running = self.execute(next_instruction)
 
     def execute(self, instruction):
         # parses instruction and stores in 'inst' as dict
         inst = self.parse_instruction(instruction)
-
         # returns false to terminate run-loop
-        if inst["inst_id"] is HLT:
+        if instruction is HLT:
             return False
 
         # destructures parsed 'inst' dict
@@ -131,22 +136,18 @@ class CPU:
 
         # reads operands from memory and stores in 'operands' list
         for i in range(len(operands)):
-            operand = self.ram_read(self.pc + i + 1)
+            operand = self.ram_read(self.reg[PC] + i + 1)
             operands[i] = operand
-
+        # print(f"pc before: {self.reg[PC]}")
         # redirects to ALU if instruction is an ALU instruction
         if is_alu:
-            self.alu(inst_id, operands)
+            self.alu(instruction, operands)
         # otherwise executes directly from the `operations` branch-table
         else:
-            self.operations[inst_id](operands)
+            self.operations[instruction](operands)
 
-        # increments pc
-        # NOTE: there's a bit in the instruction the denotes whether
-        # the instruction sets the pc, not all instructions that
-        # require setting the pc have it, not sure what that bit is
-        # used for just yet... so setting the pc manually for now
-        self.pc += num_ops + 1
+        if not sets_pc:
+            self.reg[PC] += num_ops + 1
 
         # returns true to continue run-loop
         return True
@@ -187,7 +188,7 @@ class CPU:
         # set the value to the target register
         self.reg[target_reg] = value
 
-    def PSH(self, operand):
+    def PUSH(self, operand):
         # extract the target register from the operand
         target_reg = operand[0]
         # decrements the SP
@@ -210,3 +211,20 @@ class CPU:
         self.reg[target_reg] = value
         # increments the SP
         self.reg[SP] += 1
+
+    def CALL(self, operand):
+        # extract the target register from the operand
+        target_reg = operand[0]
+        # increments the PC to the next instruction
+        self.reg[PC] += 2
+        # pushes the next instruction at the PC onto the stack
+        self.PUSH([PC])
+        # extracts the address of the sub routine from the target register
+        sub_routine_address = self.reg[target_reg]
+        # sets the PC to the sub routine address
+        self.reg[PC] = sub_routine_address
+
+    def RET(self, operand):
+        # pops the return address from the stack
+        # and stores it in the PC
+        self.POP([PC])
