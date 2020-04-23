@@ -11,12 +11,26 @@ SP = 7
 # RESERVED ADDRESSES
 STACK_START_ADDRESS = 0b11110011
 # OPERATION CODES
-LDI = 0b10000010
-PRN = 0b01000111
 HLT = 0b00000001
-MUL = 0b10100010
-PUSH = 0b01000101
-POP = 0b01000110
+LDI = 0b00000010
+PRN = 0b00000111
+PSH = 0b00000101
+POP = 0b00000110
+# ALU OPERATION CODES
+ADD = 0b00000000
+SUB = 0b00000001
+MUL = 0b00000010
+DIV = 0b00000011
+MOD = 0b00000100
+INC = 0b00000101
+DEC = 0b00000110
+CMP = 0b00000111
+AND = 0b00001000
+NOT = 0b00001001
+OR = 0b00001010
+XOR = 0b00001011
+SHL = 0b00001100
+SHR = 0b00001101
 
 
 class CPU:
@@ -34,11 +48,10 @@ class CPU:
 
         # initializes operation branch table
         self.operations = {
-            PRN: self.handle_PRN,
-            LDI: self.handle_LDI,
-            MUL: self.handle_MUL,
-            PUSH: self.handle_PUSH,
-            POP: self.handle_POP
+            PRN: self.PRN,
+            LDI: self.LDI,
+            PSH: self.PSH,
+            POP: self.POP
         }
 
     def load(self, program_file_name):
@@ -58,12 +71,13 @@ class CPU:
                 self.ram[address] = int(line, 2)
                 address += 1
 
-    def alu(self, op, reg_a, reg_b):
+    def alu(self, op, operands):
         """ALU operations."""
+        reg_a, reg_b = operands
 
-        if op == "ADD":
+        if op is ADD:
             self.reg[reg_a] += self.reg[reg_b]
-        elif op == "MUL":
+        elif op == MUL:
             self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
@@ -93,65 +107,40 @@ class CPU:
         self.ram[mar] = mdr
 
     def run(self):
-
         running = True
         while running:
-            # read the next instruction from RAM
-            next_inst = self.ram_read(self.pc)
-            # parse the instruction
-            inst = self.parse_instruction(next_inst)
-            # if HLT, terminate the loop
-            if next_inst is HLT:
-                running = False
+            next_instruction = self.ram_read(self.pc)
+            running = self.execute(next_instruction)
+
+    def execute(self, instruction):
+        # parses instruction, stores parsed instruction as dict in 'inst'
+        inst = self.parse_instruction(instruction)
+
+        if inst["inst_id"] is not HLT:
+            # destructures parsed 'inst' dict
+            num_ops, is_alu, sets_pc, inst_id = inst.values()
+            # initializes operand list of length 'num_ops'
+            operands = [None] * num_ops
+
+            # reads operands from memory and stores in 'operands' list
+            for i in range(len(operands)):
+                operand = self.ram_read(self.pc + i + 1)
+                operands[i] = operand
+
+            # redirects to ALU if instruction is an ALU instruction
+            if is_alu:
+                self.alu(inst_id, operands)
+            # otherwise executes directly from `operations` branch-table
             else:
-                self.operations[next_inst](inst["num_ops"])
+                self.operations[inst_id](operands)
 
-    def handle_PRN(self, num_ops):
-        # read the register number from RAM at address: pc + 1
-        reg_num = self.ram_read(self.pc + 1)
+            # increments pc if the instruction requires it
+            self.pc += num_ops + 1
 
-        # get the value stored in the register
-        value = self.reg[reg_num]
-        # print it
-        print(value)
-        # increment the program counter by 2 to get to the next instruction
-        self.pc += num_ops + 1
+            # continues run-loop if 'inst_id' is not HLT
+            return True
 
-    def handle_LDI(self, num_ops):
-        # read the register number from RAM at address: pc + 1
-        reg_num = self.ram_read(self.pc + 1)
-        # read the value from RAM at address: pc + 2
-        value = self.ram_read(self.pc + 2)
-        # set the value to the register
-        self.reg[reg_num] = value
-        # increment the program counter by 3 to get to the next instruction
-        self.pc += num_ops + 1
-
-    def handle_MUL(self, num_ops):
-        reg_a = self.ram_read(self.pc + 1)
-        reg_b = self.ram_read(self.pc + 2)
-        self.alu("MUL", reg_a, reg_b)
-
-        self.pc += num_ops + 1
-
-    def handle_PUSH(self, num_ops):
-        self.reg[7] -= 1
-        reg_num = self.ram_read(self.pc + 1)
-        value = self.reg[reg_num]
-        stack_address = self.reg[7]
-
-        self.ram_write(stack_address, value)
-
-        self.pc += num_ops + 1
-
-    def handle_POP(self, num_ops):
-        reg_num = self.ram_read(self.pc + 1)
-        stack_address = self.reg[7]
-        value = self.ram_read(stack_address)
-        self.reg[reg_num] = value
-        self.reg[7] += 1
-
-        self.pc += num_ops + 1
+        return False
 
     def parse_instruction(self, inst):
         # masks all but first 2 bits, bit-wise shifts 6 to right, castes to int
@@ -170,3 +159,39 @@ class CPU:
             "sets_pc": sets_pc,
             "inst_id": inst_id,
         }
+
+    def PRN(self, operand):
+        reg_num = operand[0]
+        value = self.reg[reg_num]
+        print(value)
+
+    def LDI(self, operands):
+        # read the register number from RAM at address: pc + 1
+        reg_num, value = operands
+        # read the value from RAM at address: pc + 2
+        value = operands[1]
+        # set the value to the register
+        self.reg[reg_num] = value
+
+    def PSH(self, operand):
+        # extract the operand
+        reg_num = operand[0]
+        # decrements the SP
+        self.reg[SP] -= 1
+        # extract the value stored in the target register
+        value = self.reg[reg_num]
+        # extract the stack address stored in the SP register
+        stack_address = self.reg[SP]
+        # write the value to the stack address
+        self.ram_write(stack_address, value)
+
+    def POP(self, operand):
+        reg_num = operand[0]
+        # extracts the stack address stored in the SP register
+        stack_address = self.reg[SP]
+        # extracts the value read from RAM at the stack address
+        value = self.ram_read(stack_address)
+        # stores the value in the given register
+        self.reg[reg_num] = value
+        # increments the SP
+        self.reg[SP] += 1
