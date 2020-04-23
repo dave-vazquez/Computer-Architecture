@@ -152,12 +152,16 @@ class CPU:
         return True
 
     def parse_instruction(self, inst):
+        # number of operands
         # masks all but first 2 bits, bit-wise shifts 6 to right, castes to int
         num_ops = int((0b11000000 & inst) >> 6)
+        # whether the instruction should be passed to the ALU
         # masks all but 3rd bit, bit-wise shifts 5 to right, castes to bool
         is_alu = bool((0b00100000 & inst) >> 5)
+        # whether the instruction sets the pc
         # masks all but 4th bit, bit-wise shifts 4 to right, castes to bool
         sets_pc = bool((0b00010000 & inst) >> 4)
+        # the actual identifier of the instruction (masking all the bits above)
         # masks all but last four bits
         inst_id = 0b00001111 & inst
 
