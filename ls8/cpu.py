@@ -76,7 +76,8 @@ class CPU:
         # extracts the registers from the operands
         reg_a, reg_b = operands
 
-        # NOTE: these operations should be added to the branchtable
+        # TODO: get this look-up to run at O(1)
+        # adding it to the branch table won't help (i think)
 
         if op is ADD:
             self.reg[reg_a] += self.reg[reg_b]
