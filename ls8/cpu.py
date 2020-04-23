@@ -76,6 +76,8 @@ class CPU:
         # extracts the registers from the operands
         reg_a, reg_b = operands
 
+        # NOTE: these operations should be added to the branchtable
+
         if op is ADD:
             self.reg[reg_a] += self.reg[reg_b]
         elif op is MUL:
