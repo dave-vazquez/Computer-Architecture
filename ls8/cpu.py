@@ -117,7 +117,7 @@ class CPU:
         # parses instruction and stores in 'inst' as dict
         inst = self.parse_instruction(instruction)
 
-        # returns false to execute run-loop
+        # returns false to terminate run-loop
         if inst["inst_id"] is HLT:
             return False
 
