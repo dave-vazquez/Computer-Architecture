@@ -60,8 +60,16 @@ but you'll have to implement those three above instructions first!
 ## Step 0: IMPORTANT: inventory what is here!
 
 * Make a list of files here.
+  1. ls8.py
+  2. cpu.py
+  3. ./examples
 * Write a short 3-10-word description of what each file does.
+  1. ls8.py - Initializes the CPU object, loads a program into memory and runs the program
+  2. cpu.py - Defines the CPU Class object along with all it's associated methods
+  3. ./examples - a directory of program instructions written in binary. I'm assuming these
+                  can be read using a file reader.
 * Note what has been implemented, and what hasn't.
+  2. cpu.py - constructor has yet to be defined, as well as a ram_read(), ram_write() and the run() methods      
 * Read this whole file.
 * Skim the spec.
 

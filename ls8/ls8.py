@@ -2,10 +2,14 @@
 
 """Main."""
 
+import os
 import sys
+
 from cpu import *
 
-cpu = CPU()
+os.system("clear")
+program_filename = sys.argv[1]
 
-cpu.load()
+cpu = CPU()
+cpu.load(program_filename)
 cpu.run()
